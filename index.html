@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -668,6 +668,1169 @@
           const streak = getCurrentStreak(habit);
           if (streak > 0 && streak % 7 === 0) { createConfetti(); addNotification(`🎉 ${streak} day streak!`, 'success'); }
         }https://github.com/shivamishra9454/habbit_trackker/tree/main
+      };
+
+      const completedToday = todayHabits.filter(h => h.completions[todayStr]?.completed).length;
+      const totalToday = todayHabits.length;
+      const progressPercent = totalToday > 0 ? (completedToday / totalToday) * 100 : 0;
+
+      return (
+        <div className="space-y-6 animate-in">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl font-bold">Today's Habits</h2>
+              <p className="text-slate-400 mt-1">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+            </div>
+            <button onClick={onAddClick} className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-lg hover:from-emerald-600 hover:to-cyan-600 transition-all flex items-center gap-2">
+              <Icon name="plus" className="w-5 h-5" /> Add Habit
+            </button>
+          </div>
+          {totalToday > 0 && (
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50">
+              <div className="flex items-center justify-between mb-4">
+                <div><h3 className="text-lg font-semibold">Daily Progress</h3><p className="text-slate-400 text-sm">{completedToday} of {totalToday} completed</p></div>
+                <div className="text-3xl font-bold">{Math.round(progressPercent)}%</div>
+              </div>
+              <div className="h-3 bg-slate-700 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-emerald-500 to-cyan-500 transition-all duration-500" style={{ width: `${progressPercent}%` }} />
+              </div>
+            </div>
+          )}
+          {todayHabits.length === 0 && (
+            <div className="text-center py-16">
+              <div className="text-6xl mb-4">🎯</div>
+              <p className="text-slate-400 text-lg mb-4">No habits yet. Create your first one!</p>
+              <button onClick={onAddClick} className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-lg hover:from-emerald-600 hover:to-cyan-600 transition-all">
+                <Icon name="plus" className="w-5 h-5 inline mr-2" /> Create Habit
+              </button>
+            </div>
+          )}
+          <div className="grid gap-4">
+            {todayHabits.map(habit => {
+              const isCompleted = habit.completions[todayStr]?.completed;
+              const value = habit.completions[todayStr]?.value || 0;
+              return (
+                <div key={habit.id} className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 hover:border-slate-600 transition-all cursor-pointer group habit-card">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-4 flex-1" onClick={() => onHabitClick(habit.id)}>
+                      <div className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl transition-transform group-hover:scale-110" style={{ backgroundColor: habit.color + '20', border: `2px solid ${habit.color}` }}>{habit.icon}</div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold">{habit.name}</h3>
+                        <div className="flex items-center gap-4 mt-1">
+                          <StreakBadge habit={habit} />
+                          {habit.reminder && <div className="flex items-center gap-1 text-xs text-slate-400"><Icon name="bell" className="w-3 h-3" />{habit.reminder}</div>}
+                        </div>
+                      </div>
+                    </div>
+                    <div onClick={e => e.stopPropagation()}>
+                      {habit.type === 'check' && (
+                        <button onClick={() => handleToggle(habit.id)} className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${isCompleted ? 'bg-gradient-to-br from-emerald-500 to-cyan-500' : 'border-2 border-slate-600 hover:border-emerald-500'}`}>
+                          {isCompleted && <Icon name="check" className="w-6 h-6" />}
+                        </button>
+                      )}
+                      {habit.type === 'time' && <Timer habit={habit} currentDate={currentDate} onSave={(mins) => { updateHabitValue(habit.id, currentDate, mins); addNotification(`⏱️ ${mins} minutes logged!`, 'success'); }} />}
+                      {habit.type === 'counter' && <Counter habit={habit} currentDate={currentDate} value={value} onUpdate={(v) => updateHabitValue(habit.id, currentDate, v)} />}
+                    </div>
+                  </div>
+                  <div className="pt-4 border-t border-slate-700/50"><MiniProgressGrid habit={habit} /></div>
+                  {habit.note && <div className="mt-4 pt-4 border-t border-slate-700/50 text-sm text-slate-400"><Icon name="note" className="w-4 h-4 inline mr-2" />{habit.note}</div>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // ── Calendar View ──────────────────────────────────────────────────────
+    function CalendarView({ habits, currentDate, setCurrentDate, onHabitClick }) {
+      const [viewMonth, setViewMonth] = useState(new Date());
+      const daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0).getDate();
+      const firstDay = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1).getDay();
+      const prevMonth = () => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1));
+      const nextMonth = () => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1));
+      return (
+        <div className="space-y-6 animate-in">
+          <div className="flex items-center justify-between">
+            <h2 className="text-3xl font-bold">Calendar</h2>
+            <div className="flex items-center gap-4">
+              <button onClick={prevMonth} className="p-2 hover:bg-slate-800 rounded-lg transition-all"><Icon name="chevronLeft" className="w-5 h-5" /></button>
+              <span className="text-lg font-semibold min-w-[180px] text-center">{viewMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+              <button onClick={nextMonth} className="p-2 hover:bg-slate-800 rounded-lg transition-all"><Icon name="chevronRight" className="w-5 h-5" /></button>
+            </div>
+          </div>
+          {habits.length === 0 && <div className="text-center py-16"><div className="text-6xl mb-4">📅</div><p className="text-slate-400 text-lg">No habits to display</p></div>}
+          {habits.map(habit => (
+            <div key={habit.id} className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xl" style={{ backgroundColor: habit.color + '20', border: `2px solid ${habit.color}` }}>{habit.icon}</div>
+                <div className="flex-1"><h3 className="text-lg font-semibold">{habit.name}</h3><StreakBadge habit={habit} /></div>
+              </div>
+              <div className="grid grid-cols-7 gap-2">
+                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(day => <div key={day} className="text-center text-xs text-slate-500 font-medium py-2">{day}</div>)}
+                {[...Array(firstDay)].map((_, i) => <div key={`e-${i}`} />)}
+                {[...Array(daysInMonth)].map((_, i) => {
+                  const day = i + 1;
+                  const date = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), day);
+                  const dateStr = date.toISOString().split('T')[0];
+                  const isCompleted = habit.completions[dateStr]?.completed;
+                  const isToday = dateStr === new Date().toISOString().split('T')[0];
+                  return (
+                    <div key={day} className={`aspect-square rounded-lg flex items-center justify-center text-sm transition-all cursor-pointer ${isCompleted ? 'opacity-100' : 'bg-slate-700/30 opacity-50'} ${isToday ? 'ring-2 ring-cyan-400' : ''}`}
+                      style={isCompleted ? { backgroundColor: habit.color } : {}}>{day}</div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // ── Analytics View ─────────────────────────────────────────────────────
+    function AnalyticsView({ habits }) {
+      const overallStats = useMemo(() => {
+        if (habits.length === 0) return null;
+        const allCompletions = habits.flatMap(h => Object.keys(h.completions));
+        const uniqueDays = new Set(allCompletions).size;
+        const totalCompletions = allCompletions.length;
+        const avgPerDay = uniqueDays > 0 ? (totalCompletions / uniqueDays).toFixed(1) : 0;
+        return { uniqueDays, totalCompletions, avgPerDay };
+      }, [habits]);
+      return (
+        <div className="space-y-6 animate-in">
+          <h2 className="text-3xl font-bold">Analytics</h2>
+          {overallStats && (
+            <div className="grid md:grid-cols-3 gap-4">
+              {[
+                { icon: 'calendar', color: 'text-emerald-400', label: 'Active Days', value: overallStats.uniqueDays },
+                { icon: 'check', color: 'text-cyan-400', label: 'Total Completions', value: overallStats.totalCompletions },
+                { icon: 'trendingUp', color: 'text-orange-400', label: 'Avg Per Day', value: overallStats.avgPerDay },
+              ].map(s => (
+                <div key={s.label} className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50">
+                  <div className="flex items-center gap-3 mb-2"><Icon name={s.icon} className={`w-5 h-5 ${s.color}`} /><span className="text-slate-400">{s.label}</span></div>
+                  <p className="text-3xl font-bold">{s.value}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          {habits.length === 0 && <div className="text-center py-16"><div className="text-6xl mb-4">📊</div><p className="text-slate-400 text-lg">No analytics to display</p></div>}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {habits.map(habit => {
+              const stats = calculateStats(habit);
+              return (
+                <div key={habit.id} className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" style={{ backgroundColor: habit.color + '20', border: `2px solid ${habit.color}` }}>{habit.icon}</div>
+                    <h3 className="text-lg font-semibold">{habit.name}</h3>
+                  </div>
+                  <div className="space-y-4">
+                    {[
+                      { label: 'Current Streak', value: stats.currentStreak, icon: 'flame', color: 'text-orange-400' },
+                      { label: 'Best Streak', value: stats.bestStreak, icon: 'trophy', color: 'text-yellow-400' },
+                      { label: '30-Day Rate', value: `${stats.completionRate}%`, icon: null },
+                      { label: '7-Day Rate', value: `${stats.weeklyRate}%`, icon: null },
+                      { label: 'Total Days', value: stats.totalDays, icon: null },
+                    ].map(s => (
+                      <div key={s.label} className="flex justify-between items-center">
+                        <span className="text-slate-400">{s.label}</span>
+                        <div className="flex items-center gap-2">
+                          {s.icon && <Icon name={s.icon} className={`w-4 h-4 ${s.color}`} />}
+                          <span className="text-xl font-bold">{s.value}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-6 pt-4 border-t border-slate-700/50">
+                    <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                      <div className="h-full transition-all" style={{ width: `${stats.completionRate}%`, backgroundColor: habit.color }} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // ── Settings View ──────────────────────────────────────────────────────
+    function SettingsView({ settings, onSettingsChange, habits, onExport, onImport, addNotification }) {
+      const fileInputRef = useRef(null);
+      const handleImport = (e) => {
+        const file = e.target.files[0];
+        if (file) importData(file, (imported) => { onImport(imported); addNotification('✅ Data imported successfully!', 'success'); });
+      };
+      const handleClearData = () => {
+        if (confirm('Are you sure you want to clear all data? This cannot be undone.')) { localStorage.removeItem('habit-tick-data'); window.location.reload(); }
+      };
+      return (
+        <div className="space-y-6 animate-in max-w-3xl mx-auto">
+          <h2 className="text-3xl font-bold">Settings</h2>
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50">
+            <h3 className="text-xl font-semibold mb-4 flex items-center gap-2"><Icon name="moon" className="w-5 h-5" />Theme</h3>
+            <label className="flex items-center justify-between">
+              <span className="text-slate-400">Dark Mode</span>
+              <input type="checkbox" checked={settings.darkMode} onChange={e => onSettingsChange({ ...settings, darkMode: e.target.checked })}
+                className="w-12 h-6 rounded-full appearance-none bg-slate-600 checked:bg-emerald-500 relative cursor-pointer transition-colors before:content-[''] before:absolute before:w-5 before:h-5 before:rounded-full before:bg-white before:left-0.5 before:top-0.5 before:transition-transform checked:before:translate-x-6" />
+            </label>
+          </div>
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50">
+            <h3 className="text-xl font-semibold mb-4 flex items-center gap-2"><Icon name="bell" className="w-5 h-5" />Notifications</h3>
+            <div className="space-y-3">
+              {[{ label: 'Enable Reminders', key: 'reminders' }, { label: 'Completion Sounds', key: 'sounds' }].map(({ label, key }) => (
+                <label key={key} className="flex items-center justify-between">
+                  <span className="text-slate-400">{label}</span>
+                  <input type="checkbox" checked={settings[key]} onChange={e => onSettingsChange({ ...settings, [key]: e.target.checked })}
+                    className="w-12 h-6 rounded-full appearance-none bg-slate-600 checked:bg-emerald-500 relative cursor-pointer transition-colors before:content-[''] before:absolute before:w-5 before:h-5 before:rounded-full before:bg-white before:left-0.5 before:top-0.5 before:transition-transform checked:before:translate-x-6" />
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50">
+            <h3 className="text-xl font-semibold mb-4 flex items-center gap-2"><Icon name="download" className="w-5 h-5" />Backup & Restore</h3>
+            <div className="space-y-3">
+              <button onClick={() => { exportData(habits); addNotification('✅ Backup downloaded!', 'success'); }} className="w-full px-4 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg transition-all flex items-center justify-center gap-2"><Icon name="download" className="w-5 h-5" />Export Data</button>
+              <button onClick={() => fileInputRef.current?.click()} className="w-full px-4 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg transition-all flex items-center justify-center gap-2"><Icon name="upload" className="w-5 h-5" />Import Data</button>
+              <input ref={fileInputRef} type="file" accept=".json" onChange={handleImport} className="hidden" />
+            </div>
+          </div>
+          <div className="bg-red-500/10 backdrop-blur-sm rounded-2xl p-6 border border-red-500/30">
+            <h3 className="text-xl font-semibold mb-4 text-red-400 flex items-center gap-2"><Icon name="trash" className="w-5 h-5" />Danger Zone</h3>
+            <button onClick={handleClearData} className="w-full px-4 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-all">Clear All Data</button>
+          </div>
+          <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50">
+            <h3 className="text-xl font-semibold mb-4">About</h3>
+            <div className="space-y-2 text-slate-400">
+              <p><strong className="text-white">Habit Tick</strong> v1.0</p>
+              <p>Build lasting habits with beautiful visualizations</p>
+              <p className="text-sm">All data stored locally in your browser</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Add/Edit Habit Modal ───────────────────────────────────────────────
+    function AddHabitModal({ onClose, onAdd, editHabit }) {
+      const [name, setName] = useState(editHabit?.name || '');
+      const [icon, setIcon] = useState(editHabit?.icon || '✅');
+      const [color, setColor] = useState(editHabit?.color || '#8B5CF6');
+      const [type, setType] = useState(editHabit?.type || 'check');
+      const [goal, setGoal] = useState(editHabit?.goal || 'daily');
+      const [reminder, setReminder] = useState(editHabit?.reminder || '');
+      const [note, setNote] = useState(editHabit?.note || '');
+      const [targetMinutes, setTargetMinutes] = useState(editHabit?.targetMinutes || 30);
+      const [targetCount, setTargetCount] = useState(editHabit?.targetCount || 8);
+      const colors = ['#8B5CF6','#10B981','#F59E0B','#3B82F6','#EC4899','#14B8A6','#EF4444','#6366F1','#F97316','#84CC16'];
+      const icons = ['✅','🧘','📚','💪','💧','💻','✨','🎯','🏃','🎨','🎵','🍎','😴','🧠','❤️','🌟','🔥','⚡','🌱','🎓'];
+      const handleSubmit = (e) => {
+        e.preventDefault(); if (!name.trim()) return;
+        const habitData = { name: name.trim(), icon, color, type, goal, reminder: reminder.trim(), note: note.trim(), targetMinutes: type === 'time' ? targetMinutes : undefined, targetCount: type === 'counter' ? targetCount : undefined };
+        onAdd(editHabit ? { ...editHabit, ...habitData } : habitData);
+      };
+      return (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in">
+          <div className="bg-slate-900 rounded-2xl max-w-2xl w-full border border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-slate-700 sticky top-0 bg-slate-900 z-10">
+              <h3 className="text-xl font-bold">{editHabit ? 'Edit Habit' : 'New Habit'}</h3>
+              <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-lg transition-all"><Icon name="x" className="w-5 h-5" /></button>
+            </div>
+            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              <div>
+                <label className="block text-sm font-medium mb-2">Habit Name *</label>
+                <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-white" placeholder="e.g., Morning Meditation" autoFocus required />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Icon</label>
+                <div className="grid grid-cols-10 gap-2">
+                  {icons.map(i => <button key={i} type="button" onClick={() => setIcon(i)} className={`aspect-square rounded-lg flex items-center justify-center text-2xl transition-all ${icon === i ? 'bg-slate-700 ring-2 ring-emerald-500' : 'bg-slate-800 hover:bg-slate-700'}`}>{i}</button>)}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Color</label>
+                <div className="grid grid-cols-10 gap-2">
+                  {colors.map(c => <button key={c} type="button" onClick={() => setColor(c)} className={`aspect-square rounded-lg transition-all ${color === c ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-900' : ''}`} style={{ backgroundColor: c }} />)}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Type</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[{ value: 'check', label: 'Checkmark', desc: 'Simple yes/no' }, { value: 'time', label: 'Timer', desc: 'Track minutes' }, { value: 'counter', label: 'Counter', desc: 'Count times' }].map(t => (
+                    <button key={t.value} type="button" onClick={() => setType(t.value)} className={`px-4 py-3 rounded-lg transition-all text-left ${type === t.value ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
+                      <div className="font-semibold">{t.label}</div><div className="text-xs opacity-75">{t.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {type === 'time' && <div><label className="block text-sm font-medium mb-2">Target Minutes</label><input type="number" value={targetMinutes} onChange={e => setTargetMinutes(parseInt(e.target.value))} className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-white" min="1" /></div>}
+              {type === 'counter' && <div><label className="block text-sm font-medium mb-2">Target Count</label><input type="number" value={targetCount} onChange={e => setTargetCount(parseInt(e.target.value))} className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-white" min="1" /></div>}
+              <div>
+                <label className="block text-sm font-medium mb-2">Goal Frequency</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[{ value: 'daily', label: 'Daily' }, { value: 'weekly', label: 'Weekly' }].map(g => (
+                    <button key={g.value} type="button" onClick={() => setGoal(g.value)} className={`px-4 py-2 rounded-lg transition-all ${goal === g.value ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>{g.label}</button>
+                  ))}
+                </div>
+              </div>
+              <div><label className="block text-sm font-medium mb-2"><Icon name="bell" className="w-4 h-4 inline mr-1" />Reminder Time (Optional)</label><input type="time" value={reminder} onChange={e => setReminder(e.target.value)} className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-white" /></div>
+              <div><label className="block text-sm font-medium mb-2"><Icon name="note" className="w-4 h-4 inline mr-1" />Notes (Optional)</label><textarea value={note} onChange={e => setNote(e.target.value)} className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-white resize-none" rows="3" placeholder="Add any notes about this habit..." /></div>
+              <div className="flex gap-3">
+                <button type="button" onClick={onClose} className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 rounded-lg font-semibold transition-all">Cancel</button>
+                <button type="submit" className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-lg font-semibold hover:from-emerald-600 hover:to-cyan-600 transition-all">{editHabit ? 'Save Changes' : 'Create Habit'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Habit Detail Modal ─────────────────────────────────────────────────
+    function HabitDetailModal({ habit, onClose, onDelete, onUpdate, onEdit }) {
+      if (!habit) return null;
+      const stats = calculateStats(habit);
+      return (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in">
+          <div className="bg-slate-900 rounded-2xl max-w-3xl w-full border border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-slate-700 sticky top-0 bg-slate-900 z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" style={{ backgroundColor: habit.color + '20', border: `2px solid ${habit.color}` }}>{habit.icon}</div>
+                <div><h3 className="text-xl font-bold">{habit.name}</h3><StreakBadge habit={habit} /></div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={onEdit} className="p-2 hover:bg-slate-800 rounded-lg transition-all"><Icon name="edit" className="w-5 h-5" /></button>
+                <button onClick={() => { if (confirm('Delete this habit? This action cannot be undone.')) onDelete(habit.id); }} className="p-2 hover:bg-red-500/20 rounded-lg text-red-400 transition-all"><Icon name="trash" className="w-5 h-5" /></button>
+                <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-lg transition-all"><Icon name="x" className="w-5 h-5" /></button>
+              </div>
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {[
+                  { icon: 'flame', color: 'text-orange-400', label: 'Current Streak', value: stats.currentStreak },
+                  { icon: 'trophy', color: 'text-yellow-400', label: 'Best Streak', value: stats.bestStreak },
+                  { icon: 'target', color: 'text-emerald-400', label: '30-Day Rate', value: `${stats.completionRate}%` },
+                  { icon: 'zap', color: 'text-cyan-400', label: '7-Day Rate', value: `${stats.weeklyRate}%` },
+                  { icon: 'calendar', color: 'text-purple-400', label: 'Total Days', value: stats.totalDays },
+                  { icon: 'star', color: 'text-pink-400', label: 'Type', value: habit.type, capitalize: true },
+                ].map(s => (
+                  <div key={s.label} className="bg-slate-800/50 rounded-xl p-4">
+                    <div className={`flex items-center gap-2 ${s.color} mb-2`}><Icon name={s.icon} className="w-4 h-4" /><span className="text-sm">{s.label}</span></div>
+                    <p className={`text-2xl font-bold ${s.capitalize ? 'capitalize' : ''}`}>{s.value}</p>
+                  </div>
+                ))}
+              </div>
+              {(habit.reminder || habit.note) && (
+                <div className="bg-slate-800/50 rounded-xl p-4">
+                  <h4 className="font-semibold mb-3">Details</h4>
+                  {habit.reminder && <div className="flex items-center gap-2 text-slate-300 mb-2"><Icon name="bell" className="w-4 h-4" /><span>Reminder: {habit.reminder}</span></div>}
+                  {habit.note && <div className="flex items-start gap-2 text-slate-300"><Icon name="note" className="w-4 h-4 mt-1" /><span>{habit.note}</span></div>}
+                </div>
+              )}
+              <div><h4 className="font-semibold mb-4">90-Day History</h4><HeatmapGrid habit={habit} /></div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  MAIN APP
+    // ══════════════════════════════════════════════════════════════════════
+    function HabitTracker() {
+      const [habits, setHabits] = useState([]);
+      const [activeView, setActiveView] = useState('today');
+      const [selectedHabit, setSelectedHabit] = useState(null);
+      const [showAddHabit, setShowAddHabit] = useState(false);
+      const [editingHabit, setEditingHabit] = useState(null);
+      const [currentDate, setCurrentDate] = useState(new Date());
+      const [settings, setSettings] = useState({ darkMode: true, reminders: true, sounds: true });
+      const { notifications, addNotification } = useNotifications();
+
+      useEffect(() => {
+        const saved = localStorage.getItem('habit-tick-data');
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            setHabits(parsed.habits || []);
+            if (parsed.settings) setSettings(parsed.settings);
+          } catch { loadDemoHabits(); }
+        } else { loadDemoHabits(); }
+      }, []);
+
+      function loadDemoHabits() {
+        const demo = [
+          { id: '1', name: 'Morning Meditation', icon: '🧘', color: '#8B5CF6', type: 'check', goal: 'daily', reminder: '07:00', note: 'Start the day with mindfulness', completions: generateDemoData(85) },
+          { id: '2', name: 'Read 30 min', icon: '📚', color: '#10B981', type: 'time', goal: 'daily', targetMinutes: 30, reminder: '21:00', completions: generateDemoData(70) },
+          { id: '3', name: 'Workout', icon: '💪', color: '#F59E0B', type: 'check', goal: 'daily', reminder: '06:30', note: '30 minutes minimum', completions: generateDemoData(65) },
+          { id: '4', name: 'Drink Water', icon: '💧', color: '#3B82F6', type: 'counter', goal: 'daily', targetCount: 8, note: '8 glasses per day', completions: generateDemoData(90) },
+          { id: '5', name: 'Code Practice', icon: '💻', color: '#EC4899', type: 'time', goal: 'daily', targetMinutes: 60, reminder: '14:00', completions: generateDemoData(75) },
+          { id: '6', name: 'Gratitude Journal', icon: '✨', color: '#14B8A6', type: 'check', goal: 'daily', reminder: '22:00', note: "Write 3 things I'm grateful for", completions: generateDemoData(80) },
+        ];
+        setHabits(demo);
+        addNotification('👋 Welcome! Demo habits loaded', 'info');
+      }
+
+      useEffect(() => { if (habits.length > 0) localStorage.setItem('habit-tick-data', JSON.stringify({ habits, settings })); }, [habits, settings]);
+
+      const addHabit = (habitData) => {
+        if (editingHabit) { setHabits(habits.map(h => h.id === editingHabit.id ? habitData : h)); addNotification('✏️ Habit updated!', 'success'); setEditingHabit(null); }
+        else { setHabits([...habits, { id: Date.now().toString(), ...habitData, completions: {} }]); addNotification('🎉 New habit created!', 'success'); }
+        setShowAddHabit(false);
+      };
+      const deleteHabit = (id) => { setHabits(habits.filter(h => h.id !== id)); setSelectedHabit(null); addNotification('🗑️ Habit deleted', 'info'); };
+      const updateHabit = (id, updates) => setHabits(habits.map(h => h.id === id ? { ...h, ...updates } : h));
+      const toggleHabit = (habitId, date) => {
+        const dateStr = date.toISOString().split('T')[0];
+        setHabits(habits.map(habit => {
+          if (habit.id !== habitId) return habit;
+          const newC = { ...habit.completions };
+          if (newC[dateStr]) { delete newC[dateStr]; } else { newC[dateStr] = { completed: true, timestamp: Date.now() }; }
+          return { ...habit, completions: newC };
+        }));
+      };
+      const updateHabitValue = (habitId, date, value) => {
+        const dateStr = date.toISOString().split('T')[0];
+        setHabits(habits.map(habit => {
+          if (habit.id !== habitId) return habit;
+          return { ...habit, completions: { ...habit.completions, [dateStr]: { completed: true, value, timestamp: Date.now() } } };
+        }));
+      };
+
+      const navItems = [
+        { id: 'today', icon: 'target', label: 'Today' },
+        { id: 'pomodoro', icon: 'tomato', label: 'Pomodoro' },
+        { id: 'calendar', icon: 'calendar', label: 'Calendar' },
+        { id: 'analytics', icon: 'barChart', label: 'Analytics' },
+        { id: 'settings', icon: 'settings', label: 'Settings' },
+      ];
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
+          <NotificationContainer notifications={notifications} />
+          <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-40">
+            <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-cyan-400 rounded-xl flex items-center justify-center">
+                  <Icon name="check" className="w-6 h-6 text-slate-900" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">Habit Tick</h1>
+                  <p className="text-xs text-slate-400">Build lasting habits</p>
+                </div>
+              </div>
+              <nav className="flex gap-1">
+                {navItems.map(view => (
+                  <button key={view.id} onClick={() => setActiveView(view.id)}
+                    className={`px-3 py-2 rounded-lg transition-all flex items-center gap-2 ${activeView === view.id ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'}`}
+                    title={view.label}>
+                    <Icon name={view.icon} className="w-4 h-4" />
+                    <span className="hidden md:inline text-sm">{view.label}</span>
+                    {view.id === 'pomodoro' && <span className="hidden md:inline text-xs bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded-full font-semibold">NEW</span>}
+                  </button>
+                ))}
+              </nav>
+            </div>
+          </header>
+          <main className="max-w-7xl mx-auto px-4 py-8">
+            {activeView === 'today' && <TodayView habits={habits} currentDate={currentDate} toggleHabit={toggleHabit} updateHabitValue={updateHabitValue} onHabitClick={setSelectedHabit} onAddClick={() => setShowAddHabit(true)} addNotification={addNotification} settings={settings} />}
+            {activeView === 'pomodoro' && <PomodoroView habits={habits} addNotification={addNotification} />}
+            {activeView === 'calendar' && <CalendarView habits={habits} currentDate={currentDate} setCurrentDate={setCurrentDate} onHabitClick={setSelectedHabit} />}
+            {activeView === 'analytics' && <AnalyticsView habits={habits} />}
+            {activeView === 'settings' && <SettingsView settings={settings} onSettingsChange={setSettings} habits={habits} onExport={() => exportData(habits)} onImport={setHabits} addNotification={addNotification} />}
+          </main>
+          {(showAddHabit || editingHabit) && <AddHabitModal onClose={() => { setShowAddHabit(false); setEditingHabit(null); }} onAdd={addHabit} editHabit={editingHabit} />}
+          {selectedHabit && <HabitDetailModal habit={habits.find(h => h.id === selectedHabit)} onClose={() => setSelectedHabit(null)} onDelete={deleteHabit} onUpdate={updateHabit} onEdit={() => { const h = habits.find(h => h.id === selectedHabit); setEditingHabit(h); setSelectedHabit(null); }} />}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<HabitTracker />);
+  </script>
+</body>
+</html> -->
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Habit Tick - Best Daily Habit Tracker</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+    
+    * { font-family: 'Inter', sans-serif; }
+    body { margin: 0; padding: 0; overflow-x: hidden; }
+    
+    .animate-in { animation: slideIn 0.3s ease-out; }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .habit-card { transition: all 0.2s ease; }
+    .habit-card:hover { transform: translateY(-2px); }
+    .pulse-animation { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .5; }
+    }
+    .confetti {
+      position: fixed; width: 10px; height: 10px; background: #f0f;
+      animation: confetti-fall 3s ease-out forwards; pointer-events: none; z-index: 9999;
+    }
+    @keyframes confetti-fall {
+      to { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+    }
+    .notification-toast { animation: slideInRight 0.3s ease-out; }
+    @keyframes slideInRight {
+      from { transform: translateX(400px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .fade-in { animation: fadeIn 0.5s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #1e293b; }
+    ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+    /* Pomodoro styles */
+    .pomodoro-ring {
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
+    .pomodoro-ring-track {
+      fill: none;
+      stroke: rgba(255,255,255,0.06);
+      stroke-width: 10;
+    }
+    .pomodoro-ring-progress {
+      fill: none;
+      stroke-width: 10;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1s linear, stroke 0.5s ease;
+    }
+    @keyframes pomodoroTick {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+      100% { transform: scale(1); }
+    }
+    .pomo-tick { animation: pomodoroTick 1s ease-in-out; }
+    @keyframes sessionPop {
+      0% { transform: scale(0.7); opacity: 0; }
+      70% { transform: scale(1.15); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .session-pop { animation: sessionPop 0.35s ease-out forwards; }
+    .pomo-btn {
+      transition: all 0.18s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .pomo-btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0.08);
+      opacity: 0;
+      transition: opacity 0.15s;
+      border-radius: inherit;
+    }
+    .pomo-btn:hover::after { opacity: 1; }
+    .pomo-btn:active { transform: scale(0.96); }
+    @keyframes breakPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.3); }
+      50% { box-shadow: 0 0 0 16px rgba(52, 211, 153, 0); }
+    }
+    .break-pulse { animation: breakPulse 2.5s ease-in-out infinite; }
+    @keyframes workPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.25); }
+      50% { box-shadow: 0 0 0 16px rgba(239, 68, 68, 0); }
+    }
+    .work-pulse { animation: workPulse 2s ease-in-out infinite; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useMemo, useCallback } = React;
+
+    // ── Icon Components ────────────────────────────────────────────────────
+    const Icon = ({ name, className = "w-5 h-5", ...props }) => {
+      const icons = {
+        check: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>,
+        clock: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}><circle cx="12" cy="12" r="10" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6l4 2" /></svg>,
+        calendar: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>,
+        trendingUp: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>,
+        plus: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>,
+        x: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>,
+        trash: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>,
+        target: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></svg>,
+        barChart: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>,
+        flame: <svg className={className} fill="currentColor" viewBox="0 0 24 24" {...props}><path d="M12 2c1.5 3 4 5 6 7-1 2-2 3-2 5 0 2.5 2 4.5 4.5 4.5-.3 1.5-1 2.5-2 3.5-2 2-5 3-8.5 3-4.5 0-8-2.5-8-7 0-3 1.5-5.5 3.5-7.5C7 9 8.5 7 9.5 5c.5-1 .5-2 .5-3h2z"/></svg>,
+        chevronLeft: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>,
+        chevronRight: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>,
+        edit: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>,
+        play: <svg className={className} fill="currentColor" viewBox="0 0 24 24" {...props}><path d="M8 5v14l11-7z"/></svg>,
+        pause: <svg className={className} fill="currentColor" viewBox="0 0 24 24" {...props}><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>,
+        stop: <svg className={className} fill="currentColor" viewBox="0 0 24 24" {...props}><rect x="6" y="6" width="12" height="12"/></svg>,
+        settings: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>,
+        bell: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>,
+        download: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>,
+        upload: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>,
+        moon: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>,
+        sun: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>,
+        star: <svg className={className} fill="currentColor" viewBox="0 0 24 24" {...props}><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>,
+        note: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>,
+        trophy: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" /></svg>,
+        zap: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>,
+        tomato: <svg className={className} fill="currentColor" viewBox="0 0 24 24" {...props}><path d="M12 3c.5 0 1 .2 1.4.5.4-.8 1.2-1.5 2.1-1.5.2 0 .5.1.5.3s-.2.3-.4.4c-.6.2-1 .8-1 1.4C15.8 4 17 5.4 17 7c0 .4-.1.8-.2 1.2C18.2 9 19 10.4 19 12c0 3.9-3.1 7-7 7s-7-3.1-7-7c0-1.6.5-3 1.4-4.2-.1-.3-.1-.5-.1-.8 0-1.7 1.3-3 3-3 .6 0 1.1.2 1.6.5.3-.3.7-.5 1.1-.5z"/></svg>,
+        skipForward: <svg className={className} fill="currentColor" viewBox="0 0 24 24" {...props}><path d="M6 18l8.5-6L6 6v12zm2-8.14L11.03 12 8 14.14V9.86zM16 6h2v12h-2z"/></svg>,
+        refresh: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>,
+        coffee: <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8zM6 1v3M10 1v3M14 1v3" /></svg>,
+      };
+      return icons[name] || null;
+    };
+
+    // ── Notifications ──────────────────────────────────────────────────────
+    function useNotifications() {
+      const [notifications, setNotifications] = useState([]);
+      const addNotification = (message, type = 'info') => {
+        const id = Date.now();
+        setNotifications(prev => [...prev, { id, message, type }]);
+        setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== id)), 3000);
+      };
+      return { notifications, addNotification };
+    }
+
+    function NotificationContainer({ notifications }) {
+      return (
+        <div className="fixed top-20 right-4 z-50 space-y-2">
+          {notifications.map(notif => (
+            <div key={notif.id} className={`notification-toast px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 ${notif.type === 'success' ? 'bg-emerald-500' : notif.type === 'error' ? 'bg-red-500' : 'bg-blue-500'}`}>
+              <span className="text-white">{notif.message}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // ── Confetti ───────────────────────────────────────────────────────────
+    function createConfetti() {
+      const colors = ['#10B981', '#3B82F6', '#F59E0B', '#EC4899', '#8B5CF6'];
+      for (let i = 0; i < 50; i++) {
+        const el = document.createElement('div');
+        el.className = 'confetti';
+        el.style.left = Math.random() * 100 + '%';
+        el.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        el.style.animationDelay = Math.random() * 0.5 + 's';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 3000);
+      }
+    }
+
+    // ── Utility ────────────────────────────────────────────────────────────
+    function getCurrentStreak(habit) {
+      let streak = 0;
+      const today = new Date();
+      for (let i = 0; i < 365; i++) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        if (habit.completions[dateStr]?.completed) { streak++; }
+        else if (i > 0) { break; }
+      }
+      return streak;
+    }
+
+    function calculateStats(habit) {
+      const today = new Date();
+      const last30Days = [], last7Days = [];
+      for (let i = 0; i < 30; i++) {
+        const date = new Date(today); date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        if (habit.completions[dateStr]?.completed) { last30Days.push(dateStr); if (i < 7) last7Days.push(dateStr); }
+      }
+      const currentStreak = getCurrentStreak(habit);
+      let bestStreak = 0, tempStreak = 0;
+      for (let i = 0; i < 365; i++) {
+        const date = new Date(today); date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        if (habit.completions[dateStr]?.completed) { tempStreak++; bestStreak = Math.max(bestStreak, tempStreak); }
+        else { tempStreak = 0; }
+      }
+      return {
+        currentStreak, bestStreak,
+        completionRate: Math.round((last30Days.length / 30) * 100),
+        weeklyRate: Math.round((last7Days.length / 7) * 100),
+        totalDays: Object.values(habit.completions).length
+      };
+    }
+
+    function generateDemoData(consistency) {
+      const data = {};
+      const today = new Date();
+      for (let i = 0; i < 90; i++) {
+        const date = new Date(today); date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        if (Math.random() * 100 < consistency) {
+          data[dateStr] = { completed: true, value: Math.floor(Math.random() * 60) + 10, timestamp: date.getTime() };
+        }
+      }
+      return data;
+    }
+
+    function exportData(habits) {
+      const data = { version: '1.0', exportDate: new Date().toISOString(), habits };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url;
+      a.download = `habit-tick-backup-${new Date().toISOString().split('T')[0]}.json`;
+      a.click(); URL.revokeObjectURL(url);
+    }
+
+    function importData(file, callback) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (data.habits && Array.isArray(data.habits)) { callback(data.habits); }
+          else { alert('Invalid backup file format'); }
+        } catch { alert('Error reading backup file'); }
+      };
+      reader.readAsText(file);
+    }
+
+    // ── Small Sub-components ───────────────────────────────────────────────
+    function StreakBadge({ habit }) {
+      const streak = getCurrentStreak(habit);
+      if (streak === 0) return null;
+      return (
+        <div className="flex items-center gap-1 px-2 py-1 bg-orange-500/20 rounded-full">
+          <Icon name="flame" className="w-3 h-3 text-orange-400" />
+          <span className="text-xs font-semibold text-orange-400">{streak}</span>
+        </div>
+      );
+    }
+
+    function MiniProgressGrid({ habit }) {
+      const days = [];
+      const today = new Date();
+      for (let i = 13; i >= 0; i--) {
+        const date = new Date(today); date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        days.push({ date: dateStr, completed: habit.completions[dateStr]?.completed });
+      }
+      return (
+        <div className="flex gap-1">
+          {days.map((day, i) => (
+            <div key={i} className={`flex-1 h-8 rounded transition-all ${day.completed ? 'opacity-100' : 'bg-slate-700/30 opacity-50'}`}
+              style={day.completed ? { backgroundColor: habit.color } : {}} title={day.date} />
+          ))}
+        </div>
+      );
+    }
+
+    function HeatmapGrid({ habit }) {
+      const days = [];
+      const today = new Date();
+      for (let i = 89; i >= 0; i--) {
+        const date = new Date(today); date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        days.push({ date: dateStr, completed: habit.completions[dateStr]?.completed });
+      }
+      return (
+        <div className="grid grid-cols-10 gap-2">
+          {days.map((day, i) => (
+            <div key={i} className={`aspect-square rounded transition-all ${day.completed ? 'opacity-100' : 'bg-slate-700/30 opacity-30'}`}
+              style={day.completed ? { backgroundColor: habit.color } : {}} title={day.date} />
+          ))}
+        </div>
+      );
+    }
+
+    function Timer({ habit, currentDate, onSave }) {
+      const [seconds, setSeconds] = useState(0);
+      const [isRunning, setIsRunning] = useState(false);
+      const intervalRef = useRef(null);
+      useEffect(() => {
+        if (isRunning) { intervalRef.current = setInterval(() => setSeconds(s => s + 1), 1000); }
+        else { clearInterval(intervalRef.current); }
+        return () => clearInterval(intervalRef.current);
+      }, [isRunning]);
+      const fmt = (s) => `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;
+      const handleSave = () => { onSave(Math.floor(seconds / 60)); setSeconds(0); setIsRunning(false); };
+      return (
+        <div className="flex items-center gap-2">
+          <span className="text-lg font-mono font-bold min-w-[60px]">{fmt(seconds)}</span>
+          <button onClick={() => setIsRunning(!isRunning)} className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-all">
+            {isRunning ? <Icon name="pause" className="w-4 h-4" /> : <Icon name="play" className="w-4 h-4" />}
+          </button>
+          {seconds > 0 && (<>
+            <button onClick={() => { setSeconds(0); setIsRunning(false); }} className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-all"><Icon name="stop" className="w-4 h-4" /></button>
+            <button onClick={handleSave} className="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-all text-sm font-medium">Save</button>
+          </>)}
+        </div>
+      );
+    }
+
+    function Counter({ habit, currentDate, value = 0, onUpdate }) {
+      return (
+        <div className="flex items-center gap-2">
+          <button onClick={() => onUpdate(Math.max(0, value - 1))} className="w-8 h-8 bg-slate-700 hover:bg-slate-600 rounded-lg transition-all flex items-center justify-center font-bold">-</button>
+          <span className="text-lg font-bold min-w-[40px] text-center">{value}</span>
+          <button onClick={() => onUpdate(value + 1)} className="w-8 h-8 bg-slate-700 hover:bg-slate-600 rounded-lg transition-all flex items-center justify-center font-bold">+</button>
+          <span className="text-sm text-slate-400">/ {habit.targetCount || 1}</span>
+        </div>
+      );
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  POMODORO VIEW
+    // ══════════════════════════════════════════════════════════════════════
+    const POMO_STORAGE_KEY = 'habit-tick-pomodoro-settings';
+
+    function loadPomodoroSettings() {
+      try {
+        const saved = localStorage.getItem(POMO_STORAGE_KEY);
+        if (saved) return JSON.parse(saved);
+      } catch {}
+      return null;
+    }
+
+    function savePomodoroSettings(settings) {
+      try {
+        localStorage.setItem(POMO_STORAGE_KEY, JSON.stringify(settings));
+      } catch {}
+    }
+
+    function PomodoroView({ habits, addNotification }) {
+      const [config, setConfig] = useState(function() {
+        var saved = loadPomodoroSettings();
+        return {
+          workMins: (saved && saved.workMins) ? saved.workMins : 25,
+          shortBreakMins: (saved && saved.shortBreakMins) ? saved.shortBreakMins : 5,
+          longBreakMins: (saved && saved.longBreakMins) ? saved.longBreakMins : 15,
+          sessionsUntilLong: (saved && saved.sessionsUntilLong) ? saved.sessionsUntilLong : 4,
+          linkedHabitId: (saved && saved.linkedHabitId) ? saved.linkedHabitId : '',
+        };
+      });
+      var workMins = config.workMins;
+      var shortBreakMins = config.shortBreakMins;
+      var longBreakMins = config.longBreakMins;
+      var sessionsUntilLong = config.sessionsUntilLong;
+      var linkedHabitId = config.linkedHabitId;
+      const [showConfig, setShowConfig] = useState(false);
+
+      useEffect(function() { savePomodoroSettings(config); }, [config]);
+
+      const setWorkMins = function(v) { setConfig(function(c) { return Object.assign({}, c, { workMins: v }); }); };
+      const setShortBreakMins = function(v) { setConfig(function(c) { return Object.assign({}, c, { shortBreakMins: v }); }); };
+      const setLongBreakMins = function(v) { setConfig(function(c) { return Object.assign({}, c, { longBreakMins: v }); }); };
+      const setSessionsUntilLong = function(v) { setConfig(function(c) { return Object.assign({}, c, { sessionsUntilLong: v }); }); };
+      const setLinkedHabit = function(v) { setConfig(function(c) { return Object.assign({}, c, { linkedHabitId: v }); }); };
+
+      // State
+      const [phase, setPhase] = useState('work'); // 'work' | 'short' | 'long'
+      const [sessionCount, setSessionCount] = useState(0);
+      const [totalPomodoros, setTotalPomodoros] = useState(0);
+      const [secondsLeft, setSecondsLeft] = useState(workMins * 60);
+      const [isRunning, setIsRunning] = useState(false);
+      const [task, setTask] = useState('');
+      const [log, setLog] = useState([]);
+      const [tickKey, setTickKey] = useState(0);
+      const intervalRef = useRef(null);
+      const audioCtxRef = useRef(null);
+
+      const phaseDuration = useCallback(() => {
+        if (phase === 'work') return workMins * 60;
+        if (phase === 'short') return shortBreakMins * 60;
+        return longBreakMins * 60;
+      }, [phase, workMins, shortBreakMins, longBreakMins]);
+
+      const totalSecs = phaseDuration();
+      const progress = 1 - secondsLeft / totalSecs;
+      const RADIUS = 110;
+      const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+      const dashOffset = CIRCUMFERENCE * (1 - progress);
+
+      // Ring color per phase
+      const ringColor = phase === 'work' ? '#ef4444' : '#10b981';
+      const glowColor = phase === 'work' ? 'rgba(239,68,68,0.4)' : 'rgba(16,185,129,0.4)';
+
+      function playBell() {
+        try {
+          if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+          const ctx = audioCtxRef.current;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.4);
+          gain.gain.setValueAtTime(0.4, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+          osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 1.2);
+        } catch {}
+      }
+
+      function advancePhase() {
+        playBell();
+        if (phase === 'work') {
+          const newCount = sessionCount + 1;
+          const newTotal = totalPomodoros + 1;
+          setSessionCount(newCount);
+          setTotalPomodoros(newTotal);
+          setLog(prev => [{ phase: 'work', task: task || 'Focus session', mins: workMins, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }, ...prev.slice(0, 9)]);
+          if (newCount % sessionsUntilLong === 0) {
+            setPhase('long'); setSecondsLeft(longBreakMins * 60);
+            addNotification('🎉 Long break time! Great work.', 'success');
+            createConfetti();
+          } else {
+            setPhase('short'); setSecondsLeft(shortBreakMins * 60);
+            addNotification('☕ Short break! Stretch a bit.', 'info');
+          }
+        } else {
+          setPhase('work'); setSecondsLeft(workMins * 60);
+          addNotification('🍅 Back to work! Stay focused.', 'info');
+        }
+        setIsRunning(false);
+      }
+
+      useEffect(() => {
+        if (isRunning) {
+          intervalRef.current = setInterval(() => {
+            setSecondsLeft(s => {
+              if (s <= 1) { clearInterval(intervalRef.current); advancePhase(); return 0; }
+              setTickKey(k => k + 1);
+              return s - 1;
+            });
+          }, 1000);
+        } else { clearInterval(intervalRef.current); }
+        return () => clearInterval(intervalRef.current);
+      }, [isRunning, phase]);
+
+      function reset() {
+        setIsRunning(false); setPhase('work'); setSecondsLeft(workMins * 60); setSessionCount(0);
+      }
+
+      function skipPhase() { clearInterval(intervalRef.current); advancePhase(); }
+
+      // Sync duration when phase or config changes (while stopped)
+      useEffect(() => { if (!isRunning) setSecondsLeft(phaseDuration()); }, [workMins, shortBreakMins, longBreakMins, phase]);
+
+      const mins = Math.floor(secondsLeft / 60).toString().padStart(2, '0');
+      const secs = (secondsLeft % 60).toString().padStart(2, '0');
+
+      const phaseLabel = phase === 'work' ? 'Focus' : phase === 'short' ? 'Short Break' : 'Long Break';
+      const phaseEmoji = phase === 'work' ? '🍅' : phase === 'short' ? '☕' : '🌿';
+
+      // Dots showing session progress
+      const dots = Array.from({ length: sessionsUntilLong }, (_, i) => i < (sessionCount % sessionsUntilLong || (sessionCount > 0 && sessionCount % sessionsUntilLong === 0 ? sessionsUntilLong : 0)));
+
+      return (
+        <div className="space-y-6 animate-in max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl font-bold flex items-center gap-3">
+                <span>Pomodoro Timer</span>
+                <span className="text-2xl">{phaseEmoji}</span>
+              </h2>
+              <p className="text-slate-400 mt-1">Deep work in focused intervals</p>
+            </div>
+            <button onClick={() => setShowConfig(!showConfig)}
+              className={`pomo-btn p-3 rounded-xl border transition-all ${showConfig ? 'bg-slate-700 border-slate-500' : 'bg-slate-800/50 border-slate-700 hover:border-slate-500'}`}>
+              <Icon name="settings" className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Config Panel */}
+          {showConfig && (
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 animate-in">
+              <h3 className="text-lg font-semibold mb-4">Timer Settings</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  { label: 'Focus (min)', value: workMins, set: setWorkMins, min: 1, max: 90 },
+                  { label: 'Short Break', value: shortBreakMins, set: setShortBreakMins, min: 1, max: 30 },
+                  { label: 'Long Break', value: longBreakMins, set: setLongBreakMins, min: 5, max: 60 },
+                  { label: 'Sessions → Long', value: sessionsUntilLong, set: setSessionsUntilLong, min: 2, max: 8 },
+                ].map(({ label, value, set, min, max }) => (
+                  <div key={label}>
+                    <label className="block text-xs text-slate-400 mb-2">{label}</label>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => { set(Math.max(min, value - 1)); }} className="w-8 h-8 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-bold flex items-center justify-center">−</button>
+                      <span className="w-8 text-center font-bold">{value}</span>
+                      <button onClick={() => { set(Math.min(max, value + 1)); }} className="w-8 h-8 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-bold flex items-center justify-center">+</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {habits.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-slate-700">
+                  <label className="block text-xs text-slate-400 mb-2">Link to Habit (auto-log time)</label>
+                  <select value={linkedHabitId} onChange={e => setLinkedHabit(e.target.value)}
+                    className="w-full md:w-64 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
+                    <option value="">— None —</option>
+                    {habits.filter(h => h.type === 'time' || h.type === 'check').map(h => (
+                      <option key={h.id} value={h.id}>{h.icon} {h.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="grid md:grid-cols-[1fr_320px] gap-6">
+            {/* ── Main Timer ── */}
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-slate-700/50 p-8 flex flex-col items-center gap-6">
+              {/* Phase tabs */}
+              <div className="flex gap-2 bg-slate-900/60 rounded-xl p-1.5 w-full max-w-xs">
+                {[{ id: 'work', label: 'Focus' }, { id: 'short', label: 'Short Break' }, { id: 'long', label: 'Long Break' }].map(p => (
+                  <button key={p.id} onClick={() => { if (!isRunning) { setPhase(p.id); setSecondsLeft(p.id === 'work' ? workMins * 60 : p.id === 'short' ? shortBreakMins * 60 : longBreakMins * 60); }}}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${phase === p.id ? (p.id === 'work' ? 'bg-red-500/80 text-white' : 'bg-emerald-500/80 text-white') : 'text-slate-400 hover:text-white'}`}>
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Task input */}
+              <input value={task} onChange={e => setTask(e.target.value)} placeholder="What are you working on?"
+                className="w-full max-w-xs px-4 py-2.5 bg-slate-900/60 border border-slate-700 rounded-xl text-sm text-center focus:outline-none focus:border-emerald-500 text-slate-200 placeholder-slate-500" />
+
+              {/* SVG Ring */}
+              <div className="relative flex items-center justify-center" style={{ filter: isRunning ? `drop-shadow(0 0 20px ${glowColor})` : 'none', transition: 'filter 0.5s ease' }}>
+                <svg width="280" height="280" viewBox="0 0 280 280">
+                  <circle className="pomodoro-ring-track" cx="140" cy="140" r={RADIUS} />
+                  <circle className="pomodoro-ring-progress pomodoro-ring" cx="140" cy="140" r={RADIUS}
+                    stroke={ringColor} strokeDasharray={CIRCUMFERENCE} strokeDashoffset={dashOffset} />
+                </svg>
+                {/* Center content */}
+                <div className="absolute flex flex-col items-center gap-1">
+                  <div key={tickKey} className={`text-6xl font-black tracking-tight tabular-nums ${isRunning ? '' : ''}`}
+                    style={{ fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>
+                    {mins}:{secs}
+                  </div>
+                  <div className={`text-sm font-semibold px-3 py-1 rounded-full ${phase === 'work' ? 'text-red-400 bg-red-500/15' : 'text-emerald-400 bg-emerald-500/15'}`}>
+                    {phaseLabel}
+                  </div>
+                  {/* Session dots */}
+                  <div className="flex gap-2 mt-2">
+                    {Array.from({ length: sessionsUntilLong }, (_, i) => {
+                      const done = phase === 'work'
+                        ? i < (sessionCount % sessionsUntilLong)
+                        : i < Math.min(sessionCount % sessionsUntilLong, sessionsUntilLong);
+                      return (
+                        <div key={i} className={`w-2.5 h-2.5 rounded-full transition-all ${done ? 'bg-red-400 scale-110' : 'bg-slate-600'}`} />
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Controls */}
+              <div className="flex items-center gap-3">
+                <button onClick={reset} className="pomo-btn w-12 h-12 bg-slate-700/80 hover:bg-slate-600 rounded-xl flex items-center justify-center border border-slate-600" title="Reset">
+                  <Icon name="refresh" className="w-5 h-5 text-slate-300" />
+                </button>
+                <button onClick={() => setIsRunning(!isRunning)}
+                  className={`pomo-btn w-20 h-20 rounded-2xl flex items-center justify-center text-white font-bold shadow-lg border-2 transition-all ${isRunning ? 'bg-slate-700 border-slate-500 hover:bg-slate-600' : phase === 'work' ? 'bg-red-500 border-red-400 hover:bg-red-600' : 'bg-emerald-500 border-emerald-400 hover:bg-emerald-600'} ${isRunning ? (phase === 'work' ? 'work-pulse' : 'break-pulse') : ''}`}>
+                  {isRunning ? <Icon name="pause" className="w-8 h-8" /> : <Icon name="play" className="w-8 h-8 ml-1" />}
+                </button>
+                <button onClick={skipPhase} className="pomo-btn w-12 h-12 bg-slate-700/80 hover:bg-slate-600 rounded-xl flex items-center justify-center border border-slate-600" title="Skip phase">
+                  <Icon name="skipForward" className="w-5 h-5 text-slate-300" />
+                </button>
+              </div>
+            </div>
+
+            {/* ── Right Panel: Stats + Log ── */}
+            <div className="flex flex-col gap-4">
+              {/* Today's stats */}
+              <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-slate-700/50 p-5">
+                <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Today's Stats</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-slate-900/60 rounded-xl p-3 text-center">
+                    <div className="text-2xl font-black text-red-400">{totalPomodoros}</div>
+                    <div className="text-xs text-slate-500 mt-1">Pomodoros</div>
+                  </div>
+                  <div className="bg-slate-900/60 rounded-xl p-3 text-center">
+                    <div className="text-2xl font-black text-emerald-400">{totalPomodoros * workMins}</div>
+                    <div className="text-xs text-slate-500 mt-1">Minutes focused</div>
+                  </div>
+                  <div className="bg-slate-900/60 rounded-xl p-3 text-center col-span-2">
+                    <div className="text-sm font-semibold text-slate-300">
+                      {totalPomodoros === 0 ? 'Start your first session!' :
+                       totalPomodoros < 4 ? 'Good start, keep going! 💪' :
+                       totalPomodoros < 8 ? 'On a roll! 🔥' : 'Incredible focus day! 🏆'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* How it works */}
+              <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-slate-700/50 p-5">
+                <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">How it works</h3>
+                <ol className="space-y-2.5">
+                  {[
+                    { n: '1', text: `Focus for ${workMins} minutes`, color: 'text-red-400', bg: 'bg-red-500/10' },
+                    { n: '2', text: 'Take a short break', color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+                    { n: '3', text: `Every ${sessionsUntilLong} sessions → long break`, color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
+                    { n: '4', text: 'Repeat and build focus!', color: 'text-purple-400', bg: 'bg-purple-500/10' },
+                  ].map(step => (
+                    <li key={step.n} className={`flex items-start gap-3 p-2.5 rounded-lg ${step.bg}`}>
+                      <span className={`font-black text-sm ${step.color} min-w-[20px]`}>{step.n}</span>
+                      <span className="text-sm text-slate-300">{step.text}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+
+              {/* Session log */}
+              {log.length > 0 && (
+                <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl border border-slate-700/50 p-5">
+                  <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Recent Sessions</h3>
+                  <div className="space-y-2">
+                    {log.slice(0, 5).map((entry, i) => (
+                      <div key={i} className="session-pop flex items-center justify-between py-2 border-b border-slate-700/50 last:border-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">🍅</span>
+                          <span className="text-sm text-slate-300 truncate max-w-[140px]">{entry.task}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs text-red-400 font-semibold">{entry.mins}m</span>
+                          <span className="text-xs text-slate-500">{entry.time}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Today View ─────────────────────────────────────────────────────────
+    function TodayView({ habits, currentDate, toggleHabit, updateHabitValue, onHabitClick, onAddClick, addNotification, settings }) {
+      const todayStr = currentDate.toISOString().split('T')[0];
+      const todayHabits = habits.filter(h => h.goal === 'daily' || h.goal === 'weekly');
+
+      const handleToggle = (habitId) => {
+        toggleHabit(habitId, currentDate);
+        const habit = habits.find(h => h.id === habitId);
+        const wasCompleted = habit.completions[todayStr]?.completed;
+        if (!wasCompleted) {
+          addNotification('✅ Habit completed!', 'success');
+          const streak = getCurrentStreak(habit);
+          if (streak > 0 && streak % 7 === 0) { createConfetti(); addNotification(`🎉 ${streak} day streak!`, 'success'); }
+        }
       };
 
       const completedToday = todayHabits.filter(h => h.completions[todayStr]?.completed).length;
